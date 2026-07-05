@@ -108,7 +108,8 @@ const App = (() => {
   const state = Object.assign(
     { mode: 'song', phrase: 0, hands: 'both', songTempo: 90, songLoop: true,
       lesson: 0, item: 0, prog: '251', improTempo: null,
-      improShow: { root: true, chord: true, scale: false }, improAnalyze: false },
+      improShow: { root: true, chord: true, scale: false }, improAnalyze: false,
+      transpose: 0 },
     JSON.parse(localStorage.getItem('piamo') || '{}')
   );
   const save = () => localStorage.setItem('piamo', JSON.stringify(state));
@@ -226,14 +227,33 @@ const App = (() => {
   const KEYS_251 = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'G', 'D', 'A', 'E', 'B', 'Gb'];
   let drill = null;
 
-  function voicingFor(lesson, item) {
-    if (item.notes) return item.notes;
-    const ch = Theory.parse(item.sym);
+  // Akkordsymbol um n Halbtöne verschieben (inkl. Slash-Bass)
+  function transposeSym(sym, off) {
+    if (!off) return sym;
+    const ch = Theory.parse(sym);
+    if (!ch) return sym;
+    let s = Theory.noteName((ch.root + off + 12) % 12) + ch.quality;
+    if (ch.bass != null) s += '/' + Theory.noteName((ch.bass + off + 12) % 12);
+    return s;
+  }
+
+  function voicingFor(lesson, item, off = 0) {
+    if (item.notes) return item.notes.map(n => n + off);
+    const ch = Theory.parse(transposeSym(item.sym, off));
     if (lesson.voicing === 'shell') return Theory.shellVoicing(ch);
     if (lesson.voicing === 'rootlessA') return Theory.rootlessVoicing(ch, 'A');
     if (lesson.voicing === 'rootlessB') return Theory.rootlessVoicing(ch, 'B');
     return Theory.fullVoicing(ch);
   }
+
+  // Töne eines Voicings als Notennamen (tief→hoch, ohne Oktav-Dubletten)
+  function spellNotes(notes) {
+    const seen = new Set(), out = [];
+    for (const n of notes) { const nm = Theory.noteName(n); if (!seen.has(nm)) { seen.add(nm); out.push(nm); } }
+    return out.join(' – ').replace(/b/g, '♭');
+  }
+
+  const keyName = off => fmtChord(Theory.noteName(((off % 12) + 12) % 12));
 
   function playChordNotes(notes, roll = 0.035) {
     Sound.ensure();
@@ -253,22 +273,31 @@ const App = (() => {
 
     if (lesson.drill === '251') { renderDrill(lesson); return; }
     if (state.item >= lesson.items.length) state.item = 0;
+    const off = state.transpose;
     const item = lesson.items[state.item];
-    const notes = voicingFor(lesson, item);
+    const notes = voicingFor(lesson, item, off);
+    // Bei Transponierung ist der handgeschriebene Tipp (mit festen Notennamen) nicht
+    // mehr korrekt — dann zeigen wir stattdessen die konkreten Griff-Töne der neuen Tonart.
+    const tipText = off ? '🎹 ' + spellNotes(notes) : (item.tip || '');
 
     stage().innerHTML = `
       <div class="lesson-head">
         <button class="navbtn sm" id="lsPrev">‹</button>
-        <div class="lesson-title">Lektion ${state.lesson + 1}/${LESSONS.length} · ${lesson.title}</div>
+        <div class="lesson-title">Lektion ${state.lesson + 1}/${LESSONS.length} · ${lesson.title}${off ? ' · in ' + keyName(off) : ''}</div>
         <button class="navbtn sm" id="lsNext">›</button>
       </div>
       <div class="lesson-info">${lesson.info}</div>
-      <div class="bigchord">${fmtChord(item.sym)}</div>
-      <div class="tip">${item.tip || ''}</div>
+      <div class="bigchord">${fmtChord(transposeSym(item.sym, off))}</div>
+      <div class="tip">${tipText}</div>
       <div class="controls">
         <button class="playbtn" id="chHear">▶</button>
         <div class="counter">${state.item + 1}/${lesson.items.length}</div>
         <button class="nextbtn" id="chNext">Weiter →</button>
+      </div>
+      <div class="controls sub">
+        <button class="nextbtn" id="chAll">Alle anhören ▶</button>
+        <button class="nextbtn alt" id="chKey">Tonart 🔀</button>
+        ${off ? '<button class="nextbtn alt" id="chReset">↺ C</button>' : ''}
       </div>`;
 
     showChordCard(notes);
@@ -280,6 +309,35 @@ const App = (() => {
     };
     $('#lsPrev').onclick = () => { state.lesson = (state.lesson - 1 + LESSONS.length) % LESSONS.length; state.item = 0; save(); renderChords(); };
     $('#lsNext').onclick = () => { state.lesson = (state.lesson + 1) % LESSONS.length; state.item = 0; save(); renderChords(); };
+
+    // Alle Akkorde der Lektion nacheinander vorspielen (in aktueller Tonart)
+    $('#chAll').onclick = () => {
+      const all = lesson.items.map(it => voicingFor(lesson, it, off));
+      kbd.fitTo(all.flat());
+      const bc = stage().querySelector('.bigchord');
+      const t0 = Sound.now() + 0.05, step = 0.95;
+      all.forEach((v, i) => {
+        v.forEach(n => Sound.piano(n, t0 + i * step, step * 0.95, 0.7));
+        const at = Math.max(0, (t0 - Sound.now() + i * step) * 1000);
+        setTimeout(() => {
+          kbd.clear(); kbd.lightNotes(v, 'lh');
+          if (bc) bc.textContent = fmtChord(transposeSym(lesson.items[i].sym, off));
+        }, at);
+      });
+      // am Ende auf den aktuellen Akkord zurück
+      setTimeout(() => {
+        kbd.clear(); kbd.lightNotes(notes, 'lh');
+        if (bc) bc.textContent = fmtChord(transposeSym(item.sym, off));
+      }, (all.length + 0.3) * step * 1000);
+    };
+
+    $('#chKey').onclick = () => {
+      let n = off;
+      while (n === off) n = 1 + Math.floor(Math.random() * 11); // 1..11, nie gleich
+      state.transpose = n; save(); renderChords();
+    };
+    const reset = $('#chReset');
+    if (reset) reset.onclick = () => { state.transpose = 0; save(); renderChords(); };
   }
 
   function renderDrill(lesson) {

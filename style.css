@@ -95,6 +95,8 @@ header {
   border-radius: 20px; padding: 10px 20px; font-size: 15px; font-weight: 600; cursor: pointer;
 }
 .nextbtn.alt { color: var(--dim); }
+.controls.sub { margin-top: -2px; }
+.controls.sub .nextbtn { padding: 8px 15px; font-size: 13px; }
 
 /* Impro */
 .chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }

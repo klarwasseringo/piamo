@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Piamo · Jazz Piano</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Piamo">
+  <meta name="theme-color" content="#14151c">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="logo">PIA<b>MO</b> ♪</div>
+    <nav class="tabs">
+      <button class="tab" data-m="song">Song</button>
+      <button class="tab" data-m="chords">Akkorde</button>
+      <button class="tab" data-m="impro">Impro</button>
+    </nav>
+  </header>
+  <main id="stage"></main>
+  <div id="kbd"></div>
+
+  <script src="js/theory.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/keyboard.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

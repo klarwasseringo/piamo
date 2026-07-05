@@ -1,0 +1,8 @@
+# Urheberrechtlich geschützte Noten-Scans nicht veröffentlichen!
+*.pdf
+Adobe Scan*.pdf
+scans/
+
+.DS_Store
+Thumbs.db
+.claude/

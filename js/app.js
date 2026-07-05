@@ -82,6 +82,15 @@ class Player {
     }
   }
 
+  // Live-Tempowechsel: aktuelle Beat-Position bleibt erhalten
+  setTempo(bpm) {
+    if (!this.playing) return;
+    const now = Sound.now();
+    const absBeat = (now - this.start) / this.spb;
+    this.spb = 60 / bpm;
+    this.start = now - absBeat * this.spb;
+  }
+
   stop() {
     this.playing = false;
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
@@ -207,7 +216,10 @@ const App = (() => {
       state.hands = b.dataset.h; save();
       player.stop(); resetPlayBtn(); renderSong();
     });
-    $('#songTempo').oninput = e => { state.songTempo = +e.target.value; $('#songBpm').textContent = e.target.value; save(); };
+    $('#songTempo').oninput = e => {
+      state.songTempo = +e.target.value; $('#songBpm').textContent = e.target.value; save();
+      player.setTempo(state.songTempo);
+    };
   }
 
   // ---------- Akkord-Modus ----------
@@ -424,7 +436,10 @@ const App = (() => {
         },
       });
     };
-    $('#imTempo').oninput = e => { state.improTempo = +e.target.value; $('#imBpm').textContent = e.target.value; save(); };
+    $('#imTempo').oninput = e => {
+      state.improTempo = +e.target.value; $('#imBpm').textContent = e.target.value; save();
+      player.setTempo(state.improTempo);
+    };
     stage().querySelectorAll('.lick').forEach(b => b.onclick = () => {
       const lick = LICKS[+b.dataset.l];
       const t0 = Sound.now() + 0.1;

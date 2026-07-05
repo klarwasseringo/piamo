@@ -121,8 +121,10 @@ header {
 /* Klaviatur */
 #kbd { height: min(34vh, 240px); padding: 0 6px 6px; flex-shrink: 0; }
 #kbd svg { width: 100%; height: 100%; display: block; }
-.wkey { fill: #f2efe6; stroke: #1a1a22; stroke-width: 0.12; transition: fill .06s; }
-.bkey { fill: #23242e; stroke: #000; stroke-width: 0.1; transition: fill .06s; }
+/* Aufleuchten sofort, Verlöschen mit weichem Fade-out (Nachglühen) */
+.wkey { fill: #f2efe6; stroke: #1a1a22; stroke-width: 0.12; transition: fill .45s ease-out; }
+.bkey { fill: #23242e; stroke: #000; stroke-width: 0.1; transition: fill .45s ease-out; }
+.wkey[class*="lit-"], .bkey[class*="lit-"] { transition: fill .04s; }
 .klabel { font-size: 1.6px; fill: #9a978c; text-anchor: middle; font-family: sans-serif; }
 
 .wkey.lit-rh, .bkey.lit-rh { fill: var(--accent); }

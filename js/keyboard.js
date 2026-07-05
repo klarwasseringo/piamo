@@ -84,6 +84,10 @@ class Keyboard {
     const el = this.container.querySelector(`#k${midi}`);
     if (!el) return;
     el.classList.add('lit-' + cls);
-    setTimeout(() => el.classList.remove('lit-' + cls), ms);
+    // Mindest-Leuchtdauer, und laufende Abschalt-Timer derselben Taste ersetzen
+    // (sonst löscht der alte Timer ein frisches Aufleuchten zu früh)
+    const key = '_flash_' + cls;
+    if (el[key]) clearTimeout(el[key]);
+    el[key] = setTimeout(() => { el.classList.remove('lit-' + cls); el[key] = null; }, Math.max(ms, 320));
   }
 }

@@ -98,7 +98,8 @@ const App = (() => {
 
   const state = Object.assign(
     { mode: 'song', phrase: 0, hands: 'both', songTempo: 90, songLoop: true,
-      lesson: 0, item: 0, prog: '251', improTempo: null },
+      lesson: 0, item: 0, prog: '251', improTempo: null,
+      improShow: { root: true, chord: true, scale: false } },
     JSON.parse(localStorage.getItem('piamo') || '{}')
   );
   const save = () => localStorage.setItem('piamo', JSON.stringify(state));
@@ -357,11 +358,12 @@ const App = (() => {
 
   function highlightChordScale(sym) {
     const ch = Theory.parse(sym);
-    if (!ch) { kbd.clear(); return; }
     kbd.clear();
-    kbd.lightPitchClasses(ch.scale.filter(pc => !ch.tones.includes(pc)), 'scale');
-    kbd.lightPitchClasses(ch.tones.filter(pc => pc !== ch.root), 'chord');
-    kbd.lightPitchClasses([ch.root], 'root');
+    if (!ch) return;
+    const show = state.improShow;
+    if (show.scale) kbd.lightPitchClasses(ch.scale.filter(pc => !ch.tones.includes(pc)), 'scale');
+    if (show.chord) kbd.lightPitchClasses(ch.tones.filter(pc => pc !== ch.root), 'chord');
+    if (show.root) kbd.lightPitchClasses([ch.root], 'root');
   }
 
   function renderImpro() {
@@ -382,18 +384,29 @@ const App = (() => {
           `<button class="chip lick" data-l="${i}" title="${l.name} (${l.ctx})">Lick ${i + 1}</button>`).join('')}</div>
       </div>
       <div class="legend">
-        <span><i class="sw root"></i>Grundton</span><span><i class="sw chord"></i>Akkordton</span><span><i class="sw scale"></i>Skala</span>
+        ${['root', 'chord', 'scale'].map(k => `
+          <button class="lg${state.improShow[k] ? ' on' : ''}" data-k="${k}">
+            <i class="sw ${k}"></i>${{ root: 'Grundton', chord: 'Akkordton', scale: 'Skala' }[k]}
+          </button>`).join('')}
       </div>`;
 
     kbd.setRange(36, 96);
-    highlightChordScale(prog.bars[0][0]);
+    let currentSym = prog.bars[0][0];
+    highlightChordScale(currentSym);
+
+    stage().querySelectorAll('.lg').forEach(b => b.onclick = () => {
+      const k = b.dataset.k;
+      state.improShow[k] = !state.improShow[k];
+      save();
+      b.classList.toggle('on', state.improShow[k]);
+      highlightChordScale(currentSym);
+    });
 
     stage().querySelectorAll('.chip[data-p]').forEach(c => c.onclick = () => {
       player.stop();
       state.prog = c.dataset.p; state.improTempo = null; save(); renderImpro();
     });
 
-    let lastSym = prog.bars[0][0];
     $('#imPlay').onclick = () => {
       if (player.playing) { player.stop(); $('#imPlay').textContent = '▶'; return; }
       const { evs, beats } = improEvents(prog);
@@ -407,7 +420,7 @@ const App = (() => {
           const curEl = $('#imCur'), nxtEl = $('#imNext');
           if (curEl) curEl.textContent = fmtChord(sym);
           if (nxtEl) nxtEl.textContent = nxt !== sym ? '→ ' + fmtChord(nxt) : '';
-          if (sym !== lastSym) { lastSym = sym; highlightChordScale(sym); }
+          if (sym !== currentSym) { currentSym = sym; highlightChordScale(sym); }
         },
       });
     };

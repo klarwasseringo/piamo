@@ -3,6 +3,11 @@
 Adobe Scan*.pdf
 scans/
 
+# Private Aufnahmen/Videos nicht veröffentlichen
+Appaufnahme/
+*.mp4
+*.mov
+
 .DS_Store
 Thumbs.db
 .claude/

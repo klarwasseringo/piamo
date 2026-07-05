@@ -6,6 +6,8 @@ const Sound = (() => {
 
   function ensure() {
     if (!ctx) {
+      // iOS 17+: Ton auch bei umgelegtem Stummschalter ausgeben
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
       ctx = new (window.AudioContext || window.webkitAudioContext)();
       master = ctx.createDynamicsCompressor();
       master.threshold.value = -18; master.ratio.value = 4;
@@ -13,8 +15,19 @@ const Sound = (() => {
       gain.gain.value = 0.9;
       master.connect(gain).connect(ctx.destination);
     }
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx.state !== 'running') ctx.resume(); // 'suspended' und iOS-'interrupted'
     return ctx;
+  }
+
+  // iOS-Freischaltung: muss aus einer Nutzer-Geste heraus laufen.
+  // Stiller 1-Sample-Puffer entsperrt die Audioausgabe zuverlässig.
+  function unlock() {
+    ensure();
+    try {
+      const b = ctx.createBuffer(1, 1, 22050);
+      const s = ctx.createBufferSource();
+      s.buffer = b; s.connect(ctx.destination); s.start(0);
+    } catch (e) {}
   }
 
   function midiHz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
@@ -91,5 +104,5 @@ const Sound = (() => {
     o.start(t); o.stop(t + 0.08);
   }
 
-  return { ensure, piano, bass, tick, now: () => ensure().currentTime, ctx: () => ctx };
+  return { ensure, unlock, piano, bass, tick, now: () => ensure().currentTime, ctx: () => ctx };
 })();

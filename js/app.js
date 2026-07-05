@@ -465,8 +465,11 @@ const App = (() => {
     kbd = new Keyboard($('#kbd'));
     player = new Player(kbd);
     document.querySelectorAll('.tab').forEach(t => t.onclick = () => setMode(t.dataset.m));
-    document.body.addEventListener('touchstart', () => Sound.ensure(), { once: true, passive: true });
-    document.body.addEventListener('mousedown', () => Sound.ensure(), { once: true });
+    // iOS-Audio: bei jeder Geste entsperren/aufwecken (billig, wenn schon aktiv)
+    const wake = () => Sound.unlock();
+    document.body.addEventListener('touchend', wake, { passive: true });
+    document.body.addEventListener('mousedown', wake);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) Sound.ensure(); });
     setMode(state.mode);
   }
 

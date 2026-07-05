@@ -40,10 +40,13 @@ header {
 
 #stage {
   flex: 1; min-height: 0;
-  display: flex; flex-direction: column; justify-content: center;
+  display: flex; flex-direction: column;
   gap: 8px; padding: 4px 14px;
   text-align: center; overflow-y: auto;
 }
+/* zentriert, wenn Platz ist — scrollt ohne Abschneiden, wenn es eng wird */
+#stage > :first-child { margin-top: auto; }
+#stage > :last-child { margin-bottom: auto; }
 
 /* Song */
 .phrase-nav { display: flex; align-items: center; justify-content: center; gap: 12px; }

@@ -350,10 +350,11 @@ const App = (() => {
           const fifth = Theory.fit((ch.root + 7) % 12, b - 5, b + 6);
           evs.push({ t: t + 2, dur: 2, midi: fifth, sound: 'bass', vel: 0.65 });
         }
-        // Comping: Charleston (1 und „und“ von 2)
+        // Comping: Charleston (1 und „und“ von 2) — ohne Aufblitzen:
+        // der Griff wird von highlightChordScale die ganze Akkorddauer angezeigt
         const v = Theory.rootlessVoicing(ch, barIdx % 2 ? 'B' : 'A');
-        v.forEach(n => evs.push({ t: t + seg.start, dur: 1.4, midi: n, cls: 'lh', sound: 'piano', vel: 0.32 }));
-        if (seg.dur === 4) v.forEach(n => evs.push({ t: t + 1.5, dur: 0.8, midi: n, cls: 'lh', sound: 'piano', vel: 0.22 }));
+        v.forEach(n => evs.push({ t: t + seg.start, dur: 1.4, midi: n, sound: 'piano', vel: 0.32 }));
+        if (seg.dur === 4) v.forEach(n => evs.push({ t: t + 1.5, dur: 0.8, midi: n, sound: 'piano', vel: 0.22 }));
       }
       for (let i = 0; i < 4; i++) evs.push({ t: t + i, dur: 0.1, sound: 'tick', accent: i === 1 || i === 3 });
     });
@@ -368,7 +369,7 @@ const App = (() => {
     return bar[2];
   }
 
-  function highlightChordScale(sym) {
+  function highlightChordScale(sym, barIdx = 0) {
     const ch = Theory.parse(sym);
     kbd.clear();
     if (!ch) return;
@@ -376,6 +377,8 @@ const App = (() => {
     if (show.scale) kbd.lightPitchClasses(ch.scale.filter(pc => !ch.tones.includes(pc)), 'scale');
     if (show.chord) kbd.lightPitchClasses(ch.tones.filter(pc => pc !== ch.root), 'chord');
     if (show.root) kbd.lightPitchClasses([ch.root], 'root');
+    // Der gespielte Griff (Comping-Voicing) bleibt die ganze Akkorddauer sichtbar
+    kbd.lightNotes(Theory.rootlessVoicing(ch, barIdx % 2 ? 'B' : 'A'), 'lh');
   }
 
   function renderImpro() {
@@ -404,14 +407,15 @@ const App = (() => {
 
     kbd.setRange(36, 96);
     let currentSym = prog.bars[0][0];
-    highlightChordScale(currentSym);
+    let currentBar = 0;
+    highlightChordScale(currentSym, currentBar);
 
     stage().querySelectorAll('.lg').forEach(b => b.onclick = () => {
       const k = b.dataset.k;
       state.improShow[k] = !state.improShow[k];
       save();
       b.classList.toggle('on', state.improShow[k]);
-      highlightChordScale(currentSym);
+      highlightChordScale(currentSym, currentBar);
     });
 
     stage().querySelectorAll('.chip[data-p]').forEach(c => c.onclick = () => {
@@ -432,7 +436,11 @@ const App = (() => {
           const curEl = $('#imCur'), nxtEl = $('#imNext');
           if (curEl) curEl.textContent = fmtChord(sym);
           if (nxtEl) nxtEl.textContent = nxt !== sym ? '→ ' + fmtChord(nxt) : '';
-          if (sym !== currentSym) { currentSym = sym; highlightChordScale(sym); }
+          const barIdx = Math.floor(b / 4);
+          if (sym !== currentSym || barIdx !== currentBar) {
+            currentSym = sym; currentBar = barIdx;
+            highlightChordScale(sym, barIdx);
+          }
         },
       });
     };

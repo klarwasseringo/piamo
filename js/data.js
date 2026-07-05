@@ -246,7 +246,14 @@ const LESSONS = [
 ];
 
 // ---- Impro-Progressionen ----
-// bars: 1 Symbol = ganzer Takt, 2 Symbole = halbe/halbe
+// bars: 1 Symbol = ganzer Takt, 2 Symbole = halbe/halbe, 3 = 2+1+1
+// ii–V–I durch den Quintenzirkel (abwärts): 12 Tonarten à 2 Takte
+const CIRCLE_251 = [
+  ['C', 'Dm7', 'G7'], ['F', 'Gm7', 'C7'], ['Bb', 'Cm7', 'F7'], ['Eb', 'Fm7', 'Bb7'],
+  ['Ab', 'Bbm7', 'Eb7'], ['Db', 'Ebm7', 'Ab7'], ['Gb', 'Abm7', 'Db7'], ['B', 'C#m7', 'F#7'],
+  ['E', 'F#m7', 'B7'], ['A', 'Bm7', 'E7'], ['D', 'Em7', 'A7'], ['G', 'Am7', 'D7'],
+].flatMap(([key, ii, V]) => [[ii, V], [key + 'maj7']]);
+
 const PROGRESSIONS = [
   {
     id: '251', name: 'ii–V–I', tempo: 110,
@@ -254,19 +261,24 @@ const PROGRESSIONS = [
     bars: [['Gm7'], ['C7'], ['Fmaj7'], ['Fmaj7']],
   },
   {
-    id: 'blues', name: 'F-Blues', tempo: 120,
-    tip: 'Die F-Blues-Skala (F–Ab–Bb–H–C–Eb) funktioniert über ALLE Takte.',
-    bars: [['F7'], ['Bb7'], ['F7'], ['Cm7', 'F7'], ['Bb7'], ['Bdim7'], ['F7'], ['Am7b5', 'D7b9'], ['Gm7'], ['C7'], ['F7', 'D7b9'], ['Gm7', 'C7']],
-  },
-  {
     id: 'turn', name: 'Turnaround', tempo: 110,
     tip: 'I–VI–ii–V: der ewige Kreisel. Übe kleine Motive, die du jede Runde leicht veränderst.',
     bars: [['Fmaj7', 'D7b9'], ['Gm7', 'C7']],
   },
   {
-    id: 'foggy', name: 'Foggy Day', tempo: 112,
-    tip: 'Improvisiere über die Changes deines Stücks — erst nur Akkordtöne, dann Umspielungen.',
-    bars: FOGGY.bars.map(b => b.chords.map(c => c[0])),
+    id: 'circle', name: 'Quintenzirkel', tempo: 100,
+    tip: 'ii–V–I durch alle 12 Tonarten. DIE Übung, um überall zu Hause zu sein — langsam anfangen!',
+    bars: CIRCLE_251,
+  },
+  {
+    id: 'blues', name: 'F-Blues', tempo: 120,
+    tip: 'Die F-Blues-Skala (F–Ab–Bb–H–C–Eb) funktioniert über ALLE Takte.',
+    bars: [['F7'], ['Bb7'], ['F7'], ['Cm7', 'F7'], ['Bb7'], ['Bdim7'], ['F7'], ['Am7b5', 'D7b9'], ['Gm7'], ['C7'], ['F7', 'D7b9'], ['Gm7', 'C7']],
+  },
+  {
+    id: 'mblues', name: 'Moll-Blues', tempo: 104,
+    tip: 'Wie „Mr. P.C.“: c-Moll-Pentatonik/Blues-Skala drüber, beim Ab7–G7 die Terzen mitnehmen.',
+    bars: [['Cm7'], ['Cm7'], ['Cm7'], ['Cm7'], ['Fm7'], ['Fm7'], ['Cm7'], ['Cm7'], ['Ab7'], ['G7b9'], ['Cm7'], ['Dm7b5', 'G7b9']],
   },
   {
     id: 'm251', name: 'Moll ii–V–i', tempo: 100,
@@ -274,9 +286,34 @@ const PROGRESSIONS = [
     bars: [['Em7b5'], ['A7b9'], ['Dm6'], ['Dm6']],
   },
   {
+    id: 'leaves', name: 'Autumn Leaves', tempo: 108,
+    tip: 'Dur- und Moll-ii–V–I in einem: die ersten 4 Takte sind Bb-Dur, die letzten 4 g-Moll.',
+    bars: [['Cm7'], ['F7'], ['Bbmaj7'], ['Ebmaj7'], ['Am7b5'], ['D7b9'], ['Gm6'], ['Gm6']],
+  },
+  {
+    id: 'rhythm', name: 'Rhythm Changes', tempo: 116,
+    tip: 'A-Teil von „I Got Rhythm“ — Basis von hunderten Bebop-Stücken. Bb-Dur + Chromatik.',
+    bars: [['Bb6', 'G7'], ['Cm7', 'F7'], ['Bb6', 'G7'], ['Cm7', 'F7'], ['Fm7', 'Bb7'], ['Ebmaj7', 'Ebm6'], ['Dm7', 'G7'], ['Cm7', 'F7']],
+  },
+  {
+    id: 'bossa', name: 'Bossa (Moll)', tempo: 116,
+    tip: 'Blue-Bossa-Changes: c-Moll, dann Ausflug nach Db-Dur. Ruhig gerade Achtel statt Swing.',
+    bars: [['Cm7'], ['Cm7'], ['Fm7'], ['Fm7'], ['Dm7b5'], ['G7b9'], ['Cm7'], ['Cm7'], ['Ebm7'], ['Ab7'], ['Dbmaj7'], ['Dbmaj7'], ['Dm7b5'], ['G7b9'], ['Cm7'], ['Dm7b5', 'G7b9']],
+  },
+  {
+    id: 'tritone', name: 'Chrom. Turnaround', tempo: 96,
+    tip: 'Tritonus-Substitution: der Bass läuft chromatisch F–Ab–G–Gb. Über Ab13/Gb13 einfach Halbton über dem Ziel denken.',
+    bars: [['Fmaj7', 'Ab13'], ['Gm9', 'Gb13']],
+  },
+  {
     id: 'modal', name: 'Modal (dorisch)', tempo: 116,
     tip: '„So What“: nur d-dorisch (weiße Tasten ab D). Weniger denken, mehr Rhythmus.',
     bars: [['Dm7'], ['Dm7'], ['Dm7'], ['Dm7'], ['Ebm7'], ['Ebm7'], ['Dm7'], ['Dm7']],
+  },
+  {
+    id: 'foggy', name: 'Foggy Day', tempo: 112,
+    tip: 'Improvisiere über die Changes deines Stücks — erst nur Akkordtöne, dann Umspielungen.',
+    bars: FOGGY.bars.map(b => b.chords.map(c => c[0])),
   },
 ];
 

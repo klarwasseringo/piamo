@@ -109,16 +109,26 @@ const App = (() => {
   }
 
   // ---------- Song-Modus ----------
+  // mel/lh-Einträge: [beat, dauer, midi] oder [beat, dauer, [midi, midi, ...]]
+  function pushVoice(evs, beat, entries, cls, vel) {
+    for (const [b, d, n] of entries) {
+      const notes = Array.isArray(n) ? n : [n];
+      for (const m of notes) evs.push({ t: beat + b, dur: d, midi: m, cls, sound: 'piano', vel });
+    }
+  }
+
   function songEvents(from, to, hands) {
     const evs = [];
     let beat = 0;
     for (let i = from; i <= to; i++) {
       const bar = FOGGY.bars[i];
-      if (hands !== 'lh') for (const [b, d, n] of bar.mel)
-        evs.push({ t: beat + b, dur: d, midi: n, cls: 'rh', sound: 'piano', vel: 0.85 });
-      if (hands !== 'rh') for (const [sym, b, d] of bar.chords) {
-        const v = Theory.shellVoicing(Theory.parse(sym));
-        v.forEach((n, vi) => evs.push({ t: beat + b + vi * 0.02, dur: d, midi: n, cls: 'lh', sound: 'piano', vel: 0.45 }));
+      if (hands !== 'lh') pushVoice(evs, beat, bar.mel, 'rh', 0.85);
+      if (hands !== 'rh') {
+        if (bar.lh) pushVoice(evs, beat, bar.lh, 'lh', 0.5);
+        else for (const [sym, b, d] of bar.chords) {
+          const v = Theory.shellVoicing(Theory.parse(sym));
+          v.forEach(n => evs.push({ t: beat + b, dur: d, midi: n, cls: 'lh', sound: 'piano', vel: 0.45 }));
+        }
       }
       beat += 4;
     }
@@ -157,7 +167,7 @@ const App = (() => {
           <button class="segbtn${state.hands === 'both' ? ' on' : ''}" data-h="both">Beide</button>
         </div>
         <label class="tempo">♩=<span id="songBpm">${state.songTempo}</span>
-          <input type="range" id="songTempo" min="50" max="160" value="${state.songTempo}">
+          <input type="range" id="songTempo" min="50" max="180" value="${state.songTempo}">
         </label>
       </div>`;
 
@@ -315,9 +325,9 @@ const App = (() => {
     const evs = [];
     prog.bars.forEach((chords, barIdx) => {
       const t = barIdx * 4;
-      const segs = chords.map((sym, i) => ({
-        sym, start: chords.length === 1 ? 0 : i * 2, dur: chords.length === 1 ? 4 : 2,
-      }));
+      // 1 Akkord = ganzer Takt, 2 = halbe/halbe, 3 = 2+1+1 Schläge
+      const grid = { 1: [[0, 4]], 2: [[0, 2], [2, 2]], 3: [[0, 2], [2, 1], [3, 1]] }[Math.min(chords.length, 3)];
+      const segs = chords.slice(0, 3).map((sym, i) => ({ sym, start: grid[i][0], dur: grid[i][1] }));
       for (const seg of segs) {
         const ch = Theory.parse(seg.sym);
         if (!ch) continue;
@@ -339,7 +349,10 @@ const App = (() => {
 
   function improChordAt(prog, beat) {
     const bar = prog.bars[Math.floor(beat / 4) % prog.bars.length];
-    return (bar.length === 1 || beat % 4 < 2) ? bar[0] : bar[1];
+    const b = beat % 4;
+    if (bar.length === 1 || b < 2) return bar[0];
+    if (bar.length === 2 || b < 3) return bar[1];
+    return bar[2];
   }
 
   function highlightChordScale(sym) {

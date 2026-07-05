@@ -490,6 +490,21 @@ const App = (() => {
       const t0 = Sound.now() + 0.1;
       const info = $('#lickInfo');
       if (info) info.textContent = analyze ? lick.name + ' · ' + lick.ctx : '';
+
+      // Analyse-Modus: die ii–V–I-Akkorde des Licks als leise Begleitung mitspielen,
+      // damit man jeden Ton gegen seinen Akkord hört (der Haupt-Loop ist gestoppt)
+      if (analyze) {
+        const lickEnd = lick.notes.at(-1)[0] + lick.notes.at(-1)[1];
+        lick.harmony.forEach(([beat, sym], i) => {
+          const end = i + 1 < lick.harmony.length ? lick.harmony[i + 1][0] : lickEnd;
+          const ch = Theory.parse(sym);
+          if (!ch) return;
+          const dur = (end - beat) * spb;
+          Sound.bass(Theory.bassNote(ch), t0 + beat * spb, dur, 0.7);
+          Theory.rootlessVoicing(ch, i % 2 ? 'B' : 'A')
+            .forEach(n => Sound.piano(n, t0 + beat * spb, dur * 0.92, 0.26));
+        });
+      }
       for (const [t, d, n] of lick.notes) {
         Sound.piano(n, t0 + t * spb, d * spb, 0.85);
         const at = Math.max(0, (t0 - Sound.now() + t * spb) * 1000);

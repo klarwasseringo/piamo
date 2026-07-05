@@ -180,5 +180,11 @@ const Theory = (() => {
     return fit((ch.bass != null ? ch.bass : ch.root), 33, 44); // A1..Ab2
   }
 
-  return { parse, noteName, fit, shellVoicing, rootlessVoicing, fullVoicing, bassNote, SCALES };
+  // Intervallname eines Tons relativ zum Grundton (jazz-übliche Bezeichnung)
+  const INTERVALS = ['1', '♭9', '9', '♭3', '3', '11', '♯11', '5', '♭13', '13', '♭7', '7'];
+  function intervalName(pc, root) {
+    return INTERVALS[(((pc - root) % 12) + 12) % 12];
+  }
+
+  return { parse, noteName, intervalName, fit, shellVoicing, rootlessVoicing, fullVoicing, bassNote, SCALES };
 })();

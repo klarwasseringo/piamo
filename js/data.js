@@ -318,9 +318,12 @@ const PROGRESSIONS = [
 ];
 
 // ---- Licks (notiert in F, über ii–V–I) ----
+// harmony: [beat, akkord] — welcher Akkord ab welchem Schlag drunter liegt.
+// Wird für die Lick-Analyse gebraucht (Ton als Gerüst/Verbindung/Würze einordnen).
 const LICKS = [
   {
     name: 'Bebop-Klassiker', ctx: 'Gm7 → C7 → F',
+    harmony: [[0, 'Gm7'], [4, 'C7'], [6, 'F']],
     notes: [
       [0, .5, 74], [.5, .5, 72], [1, .5, 70], [1.5, .5, 69], [2, .5, 67], [2.5, .5, 70], [3, .5, 74], [3.5, .5, 77],
       [4, 1, 76], [5, .5, 70], [5.5, .5, 68],
@@ -328,7 +331,8 @@ const LICKS = [
     ],
   },
   {
-    name: 'Enclosure (Umspielung)', ctx: 'Ziel: die Terz von F',
+    name: 'Enclosure (Umspielung)', ctx: 'Gm7 → C7 → F (Ziel: Terz von F)',
+    harmony: [[0, 'Gm7'], [4, 'C7'], [6, 'F']],
     notes: [
       [0, .5, 72], [.5, .5, 74], [1, .5, 72], [1.5, .5, 70], [2, .5, 69], [2.5, .5, 67], [3, 1, 65],
       [4, .5, 64], [4.5, .5, 67], [5, .5, 70], [5.5, .5, 73],
@@ -336,7 +340,8 @@ const LICKS = [
     ],
   },
   {
-    name: 'Blues-Lick', ctx: 'funktioniert über F7 & Blues',
+    name: 'Blues-Lick', ctx: 'über F7 & Blues',
+    harmony: [[0, 'F7']],
     notes: [
       [0, .5, 72], [.5, .5, 75], [1, .5, 74], [1.5, .5, 72], [2, .5, 70], [2.5, .5, 69], [3, 1, 65],
       [4.5, .5, 63], [5, .5, 64], [5.5, .5, 65], [6, 1.5, 60],
@@ -344,6 +349,7 @@ const LICKS = [
   },
   {
     name: 'Quarten-Lick (modern)', ctx: 'über Gm7 / modal',
+    harmony: [[0, 'Gm7']],
     notes: [
       [0, .5, 67], [.5, .5, 72], [1, .5, 77], [1.5, .5, 74], [2, .5, 79], [2.5, .5, 77], [3, .5, 74], [3.5, .5, 72],
       [4, 1, 70], [5, .5, 67], [5.5, .5, 65],

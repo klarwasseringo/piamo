@@ -108,7 +108,7 @@ const App = (() => {
   const state = Object.assign(
     { mode: 'song', phrase: 0, hands: 'both', songTempo: 90, songLoop: true,
       lesson: 0, item: 0, prog: '251', improTempo: null,
-      improShow: { root: true, chord: true, scale: false } },
+      improShow: { root: true, chord: true, scale: false }, improAnalyze: false },
     JSON.parse(localStorage.getItem('piamo') || '{}')
   );
   const save = () => localStorage.setItem('piamo', JSON.stringify(state));
@@ -369,6 +369,19 @@ const App = (() => {
     return bar[2];
   }
 
+  // Ton relativ zum Akkord einordnen: Gerüst (Akkordton) / Verbindung (Skala) / Würze (chromatisch)
+  const FUNC = { gerust: 'Gerüst', verb: 'Verbindung', wurze: 'Würze' };
+  function classifyNote(pc, ch) {
+    if (ch.tones.includes(pc)) return 'gerust';
+    if (ch.scale.includes(pc)) return 'verb';
+    return 'wurze';
+  }
+  function lickChordAt(lick, beat) {
+    let sym = lick.harmony[0][1];
+    for (const [b, s] of lick.harmony) if (b <= beat + 1e-6) sym = s;
+    return sym;
+  }
+
   function highlightChordScale(sym, barIdx = 0) {
     const ch = Theory.parse(sym);
     kbd.clear();
@@ -398,25 +411,45 @@ const App = (() => {
         <div class="licks">${LICKS.map((l, i) =>
           `<button class="chip lick" data-l="${i}" title="${l.name} (${l.ctx})">Lick ${i + 1}</button>`).join('')}</div>
       </div>
-      <div class="legend">
-        ${['root', 'chord', 'scale'].map(k => `
+      <label class="switch" id="anaSwitch">
+        <input type="checkbox" id="anaChk"${state.improAnalyze ? ' checked' : ''}>
+        <span class="track"></span>
+        <span>Lick-Analyse</span>
+      </label>
+      <div class="lickinfo" id="lickInfo"></div>
+      <div class="legend" id="improLegend"></div>`;
+
+    const renderLegend = () => {
+      const el = $('#improLegend');
+      if (state.improAnalyze) {
+        el.innerHTML = ['gerust', 'verb', 'wurze'].map(k =>
+          `<span class="lg static"><i class="sw ${k}"></i>${FUNC[k]}</span>`).join('');
+      } else {
+        el.innerHTML = ['root', 'chord', 'scale'].map(k => `
           <button class="lg${state.improShow[k] ? ' on' : ''}" data-k="${k}">
             <i class="sw ${k}"></i>${{ root: 'Grundton', chord: 'Akkordton', scale: 'Skala' }[k]}
-          </button>`).join('')}
-      </div>`;
+          </button>`).join('');
+        el.querySelectorAll('.lg[data-k]').forEach(b => b.onclick = () => {
+          const k = b.dataset.k;
+          state.improShow[k] = !state.improShow[k]; save();
+          b.classList.toggle('on', state.improShow[k]);
+          highlightChordScale(currentSym, currentBar);
+        });
+      }
+    };
 
     kbd.setRange(36, 96);
     let currentSym = prog.bars[0][0];
     let currentBar = 0;
     highlightChordScale(currentSym, currentBar);
+    renderLegend();
 
-    stage().querySelectorAll('.lg').forEach(b => b.onclick = () => {
-      const k = b.dataset.k;
-      state.improShow[k] = !state.improShow[k];
-      save();
-      b.classList.toggle('on', state.improShow[k]);
-      highlightChordScale(currentSym, currentBar);
-    });
+    $('#anaChk').onchange = e => {
+      state.improAnalyze = e.target.checked; save();
+      renderLegend();
+      $('#lickInfo').textContent = '';
+      if (!state.improAnalyze) highlightChordScale(currentSym, currentBar);
+    };
 
     stage().querySelectorAll('.chip[data-p]').forEach(c => c.onclick = () => {
       player.stop();
@@ -450,11 +483,31 @@ const App = (() => {
     };
     stage().querySelectorAll('.lick').forEach(b => b.onclick = () => {
       const lick = LICKS[+b.dataset.l];
+      const analyze = state.improAnalyze;
+      if (analyze) { player.stop(); $('#imPlay').textContent = '▶'; kbd.clear(); }
+      // In der Analyse langsamer, damit man jeden Ton erfassen kann
+      const spb = 60 / (analyze ? 56 : (state.improTempo || prog.tempo));
       const t0 = Sound.now() + 0.1;
-      const spb = 60 / (state.improTempo || prog.tempo);
+      const info = $('#lickInfo');
+      if (info) info.textContent = analyze ? lick.name + ' · ' + lick.ctx : '';
       for (const [t, d, n] of lick.notes) {
         Sound.piano(n, t0 + t * spb, d * spb, 0.85);
-        setTimeout(() => kbd.flash(n, 'rh', Math.max(d * spb * 1000 - 40, 90)), Math.max(0, (t0 - Sound.now() + t * spb) * 1000));
+        const at = Math.max(0, (t0 - Sound.now() + t * spb) * 1000);
+        if (analyze) {
+          const ch = Theory.parse(lickChordAt(lick, t));
+          const cls = classifyNote(n % 12, ch);
+          setTimeout(() => {
+            kbd.flash(n, cls, Math.max(d * spb * 1000 - 40, 550));
+            if (info) info.innerHTML =
+              `<b class="fn-${cls}">${Theory.noteName(n)} = ${Theory.intervalName(n % 12, ch.root)} von ${fmtChord(ch.symbol)}</b> · ${FUNC[cls]}`;
+          }, at);
+        } else {
+          setTimeout(() => kbd.flash(n, 'rh', Math.max(d * spb * 1000 - 40, 90)), at);
+        }
+      }
+      if (analyze) {
+        const endMs = (t0 - Sound.now() + (lick.notes.at(-1)[0] + lick.notes.at(-1)[1]) * spb) * 1000;
+        setTimeout(() => { if (info) info.textContent = lick.name + ' · ' + lick.ctx; }, endMs + 400);
       }
     });
   }

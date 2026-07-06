@@ -180,10 +180,27 @@ const Theory = (() => {
     return fit((ch.bass != null ? ch.bass : ch.root), 33, 44); // A1..Ab2
   }
 
-  // Intervallname eines Tons relativ zum Grundton (jazz-übliche Bezeichnung)
-  const INTERVALS = ['1', '♭9', '9', '♭3', '3', '11', '♯11', '5', '♭13', '13', '♭7', '7'];
-  function intervalName(pc, root) {
-    return INTERVALS[(((pc - root) % 12) + 12) % 12];
+  // Intervallname eines Tons relativ zum Akkord (jazz-übliche Bezeichnung, kontextsensitiv).
+  // ch kann der geparste Akkord oder einfach der Grundton (Zahl) sein.
+  function intervalName(pc, ch) {
+    const root = typeof ch === 'number' ? ch : ch.root;
+    const iv = typeof ch === 'number' ? [] : ch.intervals;
+    const d = (((pc - root) % 12) + 12) % 12;
+    const hasMaj3 = iv.includes(4), has5 = iv.includes(7);
+    switch (d) {
+      case 1: return '♭9';
+      case 2: return '9';
+      case 3: return hasMaj3 ? '♯9' : '♭3';   // über Dominante ist die kl. Terz die #9
+      case 4: return '3';
+      case 5: return '11';
+      case 6: return '♯11';
+      case 7: return '5';
+      case 8: return has5 ? '♭13' : '♯5';      // ohne reine Quinte eher #5 (augmentiert)
+      case 9: return '13';
+      case 10: return '♭7';
+      case 11: return '7';
+      default: return '1';
+    }
   }
 
   return { parse, noteName, intervalName, fit, shellVoicing, rootlessVoicing, fullVoicing, bassNote, SCALES };

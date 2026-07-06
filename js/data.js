@@ -317,12 +317,14 @@ const PROGRESSIONS = [
   },
 ];
 
-// ---- Licks (notiert in F, über ii–V–I) ----
+// ---- Licks ----
 // harmony: [beat, akkord] — welcher Akkord ab welchem Schlag drunter liegt.
-// Wird für die Lick-Analyse gebraucht (Ton als Gerüst/Verbindung/Würze einordnen).
+// Wird für Lick-Analyse (Ton als Gerüst/Verbindung/Würze) und Begleitung gebraucht.
+// short: Button-Beschriftung.  8 Schläge = 2 Takte.
 const LICKS = [
+  // ---- Dur ii–V–I (in F) ----
   {
-    name: 'Bebop-Klassiker', ctx: 'Gm7 → C7 → F',
+    name: 'Bebop-Klassiker', short: 'Bebop', ctx: 'Gm7 → C7 → F',
     harmony: [[0, 'Gm7'], [4, 'C7'], [6, 'F']],
     notes: [
       [0, .5, 74], [.5, .5, 72], [1, .5, 70], [1.5, .5, 69], [2, .5, 67], [2.5, .5, 70], [3, .5, 74], [3.5, .5, 77],
@@ -331,7 +333,7 @@ const LICKS = [
     ],
   },
   {
-    name: 'Enclosure (Umspielung)', ctx: 'Gm7 → C7 → F (Ziel: Terz von F)',
+    name: 'Enclosure (Umspielung)', short: 'Umspielung', ctx: 'Gm7 → C7 → F (Ziel: Terz von F)',
     harmony: [[0, 'Gm7'], [4, 'C7'], [6, 'F']],
     notes: [
       [0, .5, 72], [.5, .5, 74], [1, .5, 72], [1.5, .5, 70], [2, .5, 69], [2.5, .5, 67], [3, 1, 65],
@@ -340,15 +342,100 @@ const LICKS = [
     ],
   },
   {
-    name: 'Blues-Lick', ctx: 'über F7 & Blues',
-    harmony: [[0, 'F7']],
+    name: 'Arpeggio 3–9', short: 'Arpeggio', ctx: 'Gm7 → C7 → F',
+    harmony: [[0, 'Gm7'], [4, 'C7'], [6, 'F']],
     notes: [
-      [0, .5, 72], [.5, .5, 75], [1, .5, 74], [1.5, .5, 72], [2, .5, 70], [2.5, .5, 69], [3, 1, 65],
-      [4.5, .5, 63], [5, .5, 64], [5.5, .5, 65], [6, 1.5, 60],
+      [0, .5, 70], [.5, .5, 74], [1, .5, 77], [1.5, .5, 81], [2, .5, 79], [2.5, .5, 77], [3, .5, 74], [3.5, .5, 72],
+      [4, .5, 76], [4.5, .5, 74], [5, .5, 70], [5.5, .5, 68],
+      [6, 2, 69],
     ],
   },
   {
-    name: 'Quarten-Lick (modern)', ctx: 'über Gm7 / modal',
+    name: 'Bebop abwärts', short: 'Bebop ↓', ctx: 'Gm7 → C7 → F',
+    harmony: [[0, 'Gm7'], [4, 'C7'], [6, 'F']],
+    notes: [
+      [0, .5, 74], [.5, .5, 72], [1, .5, 70], [1.5, .5, 69], [2, .5, 67], [2.5, .5, 66], [3, .5, 65], [3.5, .5, 64],
+      [4, .5, 64], [4.5, .5, 62], [5, .5, 61], [5.5, .5, 60],
+      [6, 2, 69],
+    ],
+  },
+  {
+    name: 'b9-Linie', short: 'b9-Linie', ctx: 'Gm7 → C7 → F (Spannung auf C7)',
+    harmony: [[0, 'Gm7'], [4, 'C7'], [6, 'F']],
+    notes: [
+      [0, .5, 67], [.5, .5, 70], [1, .5, 74], [1.5, .5, 77], [2, 1, 74], [3, 1, 72],
+      [4, .5, 76], [4.5, .5, 73], [5, .5, 72], [5.5, .5, 70],
+      [6, 2, 69],
+    ],
+  },
+  {
+    name: 'Kurve', short: 'Kurve', ctx: 'Gm7 → C7 → F',
+    harmony: [[0, 'Gm7'], [4, 'C7'], [6, 'F']],
+    notes: [
+      [0, .5, 70], [.5, .5, 72], [1, .5, 74], [1.5, .5, 72], [2, .5, 70], [2.5, .5, 69], [3, 1, 67],
+      [4, .5, 64], [4.5, .5, 67], [5, .5, 70], [5.5, .5, 73],
+      [6, 2, 69],
+    ],
+  },
+  // ---- Moll ii–V–i (in Dm) ----
+  {
+    name: 'Moll-Linie abwärts', short: 'Moll 1', ctx: 'Em7♭5 → A7♭9 → Dm',
+    harmony: [[0, 'Em7b5'], [4, 'A7b9'], [6, 'Dm6']],
+    notes: [
+      [0, .5, 74], [.5, .5, 70], [1, .5, 67], [1.5, .5, 65], [2, .5, 64], [2.5, .5, 62], [3, 1, 60],
+      [4, .5, 61], [4.5, .5, 64], [5, .5, 67], [5.5, .5, 70],
+      [6, 2, 65],
+    ],
+  },
+  {
+    name: 'Moll-Arpeggio', short: 'Moll 2', ctx: 'Em7♭5 → A7♭9 → Dm',
+    harmony: [[0, 'Em7b5'], [4, 'A7b9'], [6, 'Dm6']],
+    notes: [
+      [0, .5, 64], [.5, .5, 67], [1, .5, 70], [1.5, .5, 74], [2, .5, 70], [2.5, .5, 67], [3, 1, 65],
+      [4, .5, 64], [4.5, .5, 67], [5, .5, 70], [5.5, .5, 72],
+      [6, 2, 69],
+    ],
+  },
+  // ---- Blues (F7) ----
+  {
+    name: 'Blues Ruf & Antwort', short: 'Blues 2', ctx: 'über F7 & Blues',
+    harmony: [[0, 'F7']],
+    notes: [
+      [0, .5, 72], [.5, .5, 75], [1, .5, 72], [1.5, .5, 70], [2, 1, 68], [3, 1, 65],
+      [4, .5, 65], [4.5, .5, 68], [5, .5, 70], [5.5, .5, 71], [6, .5, 72], [6.5, 1.5, 65],
+    ],
+  },
+  // ---- Alteriert / Turnaround / Modal ----
+  {
+    name: 'Alterierte Linie', short: 'Alteriert', ctx: 'C7alt → F',
+    harmony: [[0, 'C7alt'], [4, 'F']],
+    notes: [
+      [0, .5, 75], [.5, .5, 73], [1, .5, 72], [1.5, .5, 70], [2, .5, 68], [2.5, .5, 66], [3, .5, 64], [3.5, .5, 63],
+      [4, .5, 65], [4.5, .5, 69], [5, .5, 72], [5.5, .5, 76],
+      [6, 2, 69],
+    ],
+  },
+  {
+    name: 'Turnaround-Linie', short: 'Turnaround', ctx: 'F → D7♭9 → Gm7 → C7',
+    harmony: [[0, 'F6'], [2, 'D7b9'], [4, 'Gm7'], [6, 'C7']],
+    notes: [
+      [0, .5, 69], [.5, .5, 72], [1, .5, 74], [1.5, .5, 72],
+      [2, .5, 66], [2.5, .5, 69], [3, .5, 72], [3.5, .5, 75],
+      [4, .5, 74], [4.5, .5, 70], [5, .5, 67], [5.5, .5, 70],
+      [6, .5, 64], [6.5, .5, 67], [7, 1, 70],
+    ],
+  },
+  {
+    name: 'Dorisch modal', short: 'Dorisch', ctx: 'über Dm7 (natürliche Sexte!)',
+    harmony: [[0, 'Dm7']],
+    notes: [
+      [0, .5, 62], [.5, .5, 65], [1, .5, 69], [1.5, .5, 72], [2, .5, 74], [2.5, .5, 72], [3, .5, 69], [3.5, .5, 71],
+      [4, .5, 72], [4.5, .5, 69], [5, .5, 67], [5.5, .5, 65],
+      [6, 2, 62],
+    ],
+  },
+  {
+    name: 'Quarten-Lick (modern)', short: 'Quarten', ctx: 'über Gm7 / modal',
     harmony: [[0, 'Gm7']],
     notes: [
       [0, .5, 67], [.5, .5, 72], [1, .5, 77], [1.5, .5, 74], [2, .5, 79], [2.5, .5, 77], [3, .5, 74], [3.5, .5, 72],

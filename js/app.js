@@ -466,9 +466,9 @@ const App = (() => {
         <label class="tempo">♩=<span id="imBpm">${tempo}</span>
           <input type="range" id="imTempo" min="60" max="200" value="${tempo}">
         </label>
-        <div class="licks">${LICKS.map((l, i) =>
-          `<button class="chip lick" data-l="${i}" title="${l.name} (${l.ctx})">Lick ${i + 1}</button>`).join('')}</div>
       </div>
+      <div class="licks">${LICKS.map((l, i) =>
+        `<button class="chip lick" data-l="${i}" title="${l.name} · ${l.ctx}">${l.short}</button>`).join('')}</div>
       <label class="switch" id="anaSwitch">
         <input type="checkbox" id="anaChk"${state.improAnalyze ? ' checked' : ''}>
         <span class="track"></span>
@@ -542,6 +542,9 @@ const App = (() => {
     stage().querySelectorAll('.lick').forEach(b => b.onclick = () => {
       const lick = LICKS[+b.dataset.l];
       const analyze = state.improAnalyze;
+      const loopRunning = player.playing;
+      // Begleitung mitspielen, wenn analysiert ODER kein Loop läuft (sonst liefert der Loop die Akkorde)
+      const withBacking = analyze || !loopRunning;
       if (analyze) { player.stop(); $('#imPlay').textContent = '▶'; kbd.clear(); }
       // In der Analyse langsamer, damit man jeden Ton erfassen kann
       const spb = 60 / (analyze ? 56 : (state.improTempo || prog.tempo));
@@ -549,9 +552,9 @@ const App = (() => {
       const info = $('#lickInfo');
       if (info) info.textContent = analyze ? lick.name + ' · ' + lick.ctx : '';
 
-      // Analyse-Modus: die ii–V–I-Akkorde des Licks als leise Begleitung mitspielen,
-      // damit man jeden Ton gegen seinen Akkord hört (der Haupt-Loop ist gestoppt)
-      if (analyze) {
+      // Die Akkorde des Licks als leise Begleitung mitspielen, damit man den Ton
+      // gegen seinen Akkord hört
+      if (withBacking) {
         const lickEnd = lick.notes.at(-1)[0] + lick.notes.at(-1)[1];
         lick.harmony.forEach(([beat, sym], i) => {
           const end = i + 1 < lick.harmony.length ? lick.harmony[i + 1][0] : lickEnd;
@@ -560,7 +563,7 @@ const App = (() => {
           const dur = (end - beat) * spb;
           Sound.bass(Theory.bassNote(ch), t0 + beat * spb, dur, 0.7);
           Theory.rootlessVoicing(ch, i % 2 ? 'B' : 'A')
-            .forEach(n => Sound.piano(n, t0 + beat * spb, dur * 0.92, 0.26));
+            .forEach(n => Sound.piano(n, t0 + beat * spb, dur * 0.92, 0.24));
         });
       }
       for (const [t, d, n] of lick.notes) {
@@ -572,7 +575,7 @@ const App = (() => {
           setTimeout(() => {
             kbd.flash(n, cls, Math.max(d * spb * 1000 - 40, 550));
             if (info) info.innerHTML =
-              `<b class="fn-${cls}">${Theory.noteName(n)} = ${Theory.intervalName(n % 12, ch.root)} von ${fmtChord(ch.symbol)}</b> · ${FUNC[cls]}`;
+              `<b class="fn-${cls}">${Theory.noteName(n)} = ${Theory.intervalName(n % 12, ch)} von ${fmtChord(ch.symbol)}</b> · ${FUNC[cls]}`;
           }, at);
         } else {
           setTimeout(() => kbd.flash(n, 'rh', Math.max(d * spb * 1000 - 40, 90)), at);

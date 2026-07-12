@@ -34,9 +34,11 @@ const FOGGY_A = () => [
 ];
 
 const FOGGY = {
+  id: 'foggy',
   title: 'A Foggy Day',
   composer: 'G. Gershwin',
   tempo: 112,
+  beatsPerBar: 4,
   bars: [
     // ---- A (Takt 5–12) ----
     ...FOGGY_A(),
@@ -118,6 +120,94 @@ const FOGGY = {
     { name: 'Coda (pp, una corda)',              from: 30, to: 34 },
   ],
 };
+
+// ---- Cornfield Chase (H. Zimmer, aus „Interstellar“) ----
+// Strukturgetreue Umsetzung nach dem EveryonePiano-Blatt (C-Dur, 6/8 mit
+// zwei 3/8-Takten): liegende Quinten → Achtel-Ostinato → 16tel-Motor (LH).
+// 1 Beat = 1 Achtel. Feinabgleich gegen die Noten wie bei Foggy Day erwünscht.
+
+// LH-16tel-Motor: r – 5 – 8 – 10/♭10 – 8 – 5, zweimal pro 6/8-Takt
+function cfEngine(sym, beats = 6) {
+  const ch = Theory.parse(sym);
+  const r = Theory.fit(ch.root, 41, 52);
+  const t3 = r + (ch.intervals.includes(3) ? 3 : 4) + 12;
+  const seq = [r, r + 7, r + 12, t3, r + 12, r + 7];
+  const out = [];
+  for (let b = 0; b < beats; b += 0.5) out.push([b, 0.5, seq[(b * 2) % 6]]);
+  return out;
+}
+// Liegende Quinte (Intro/A-Teil)
+function cfPad(sym, beats = 6) {
+  const ch = Theory.parse(sym);
+  const r = Theory.fit(ch.root, 41, 52);
+  return [[0, beats, [r, r + 7]]];
+}
+// RH-16tel-Figuration eine Oktave höher (A- und C-Teil)
+function cfFig(sym, beats = 6) {
+  return cfEngine(sym, beats).map(([b, d, n]) => [b, d, n + 12]);
+}
+// RH-Achtel-Ostinato (Intro): E–A–C aufwärts
+const CF_OST = [[0, 1, 64], [1, 1, 69], [2, 1, 72], [3, 1, 64], [4, 1, 69], [5, 1, 72]];
+
+const CORNFIELD = {
+  id: 'cornfield',
+  title: 'Cornfield Chase',
+  composer: 'H. Zimmer',
+  tempo: 132,            // 1 Beat = 1 Achtel; Original wirkt ab ~170
+  beatsPerBar: 6,
+  bars: [
+    // Intro (T. 1–5): Quint-Pedal, Ostinato setzt ein
+    { chords: [['Am', 0, 6]], mel: [], lh: cfPad('Am') },
+    { chords: [['Am', 0, 6]], mel: CF_OST, lh: cfPad('Am') },
+    { chords: [['Am', 0, 6]], mel: CF_OST, lh: cfPad('Am') },
+    { chords: [['Am', 0, 6]], mel: CF_OST, lh: cfPad('Am') },
+    { chords: [['Am', 0, 6]], mel: CF_OST, lh: cfPad('Am') },
+    // A-Teil (T. 6–14): Melodie steigt, RH-Figuration, 3/8-Einwürfe
+    { chords: [['C', 0, 6]],  mel: [[0, 3, 69], [3, 3, 72], ...cfFig('C')],  lh: cfPad('C') },
+    { chords: [['C', 0, 6]],  mel: [[0, 3, 72], [3, 3, 74], ...cfFig('C')],  lh: cfPad('C') },
+    { chords: [['F', 0, 6]],  mel: [[0, 3, 74], [3, 3, 72], ...cfFig('F')],  lh: cfPad('F') },
+    { chords: [['F', 0, 6]],  mel: [[0, 6, 76], ...cfFig('F')],              lh: cfPad('F') },
+    { chords: [['G', 0, 3]],  mel: [[0, 3, 79], ...cfFig('G', 3)],           lh: cfPad('G', 3), beats: 3 },
+    { chords: [['G', 0, 3]],  mel: [[0, 3, 77], ...cfFig('G', 3)],           lh: cfPad('G', 3), beats: 3 },
+    { chords: [['G', 0, 6]],  mel: [[0, 3, 76], [3, 3, 74], ...cfFig('G')],  lh: cfPad('G') },
+    { chords: [['Am', 0, 6]], mel: [[0, 1, 69], [1, 1, 71], [2, 1, 72], [3, 1, 74], [4, 1, 76], [5, 1, 77]], lh: cfPad('Am') },
+    { chords: [['G', 0, 6]],  mel: [[0, 1, 79], [1, 1, 77], [2, 1, 76], [3, 1, 74], [4, 1, 71], [5, 1, 67]], lh: cfPad('G') },
+    // B-Teil (T. 15–22): Hauptthema (a–h–e-Motiv), LH-Motor läuft an
+    { chords: [['Am', 0, 6]], mel: [[0, 2, 69], [2, 1, 71], [3, 3, 76]], lh: cfEngine('Am') },
+    { chords: [['Am', 0, 6]], mel: [[0, 2, 69], [2, 1, 71], [3, 3, 74]], lh: cfEngine('Am') },
+    { chords: [['F', 0, 6]],  mel: [[0, 2, 69], [2, 1, 71], [3, 3, 72]], lh: cfEngine('F') },
+    { chords: [['F', 0, 6]],  mel: [[0, 2, 69], [2, 1, 71], [3, 3, 74]], lh: cfEngine('F') },
+    { chords: [['C', 0, 6]],  mel: [[0, 2, 67], [2, 1, 69], [3, 3, 72]], lh: cfEngine('C') },
+    { chords: [['C', 0, 6]],  mel: [[0, 2, 64], [2, 1, 67], [3, 3, 71]], lh: cfEngine('C') },
+    { chords: [['G', 0, 6]],  mel: [[0, 2, 67], [2, 1, 71], [3, 3, 74]], lh: cfEngine('G') },
+    { chords: [['G', 0, 6]],  mel: [[0, 3, 74], [3, 3, 71]],             lh: cfEngine('G') },
+    // C-Teil (T. 23–30): Thema oktaviert + RH-Figuration darunter
+    { chords: [['Am', 0, 6]], mel: [[0, 2, 81], [2, 1, 83], [3, 3, 88], ...cfFig('Am')], lh: cfEngine('Am') },
+    { chords: [['Am', 0, 6]], mel: [[0, 2, 81], [2, 1, 83], [3, 3, 86], ...cfFig('Am')], lh: cfEngine('Am') },
+    { chords: [['F', 0, 6]],  mel: [[0, 2, 81], [2, 1, 83], [3, 3, 84], ...cfFig('F')],  lh: cfEngine('F') },
+    { chords: [['F', 0, 6]],  mel: [[0, 2, 81], [2, 1, 83], [3, 3, 86], ...cfFig('F')],  lh: cfEngine('F') },
+    { chords: [['C', 0, 6]],  mel: [[0, 2, 79], [2, 1, 81], [3, 3, 84], ...cfFig('C')],  lh: cfEngine('C') },
+    { chords: [['C', 0, 6]],  mel: [[0, 2, 76], [2, 1, 79], [3, 3, 83], ...cfFig('C')],  lh: cfEngine('C') },
+    { chords: [['G', 0, 6]],  mel: [[0, 2, 79], [2, 1, 83], [3, 3, 86], ...cfFig('G')],  lh: cfEngine('G') },
+    { chords: [['G', 0, 6]],  mel: [[0, 3, 86], [3, 3, 83], ...cfFig('G')],              lh: cfEngine('G') },
+    // Finale (T. 31–35): Abstieg und gebundene Schlussakkorde
+    { chords: [['F', 0, 6]],  mel: [[0, 3, 81], [3, 3, 79], ...cfFig('F')], lh: cfEngine('F') },
+    { chords: [['G', 0, 6]],  mel: [[0, 3, 77], [3, 3, 74], ...cfFig('G')], lh: cfEngine('G') },
+    { chords: [['Am', 0, 6]], mel: [[0, 6, 76], ...cfFig('Am')],            lh: cfEngine('Am') },
+    { chords: [['C', 0, 6]],  mel: [[0, 6, [64, 67, 72, 76]]],              lh: [[0, 6, [36, 43, 48]]] },
+    { chords: [['C', 0, 6]],  mel: [[0, 6, [64, 67, 72, 76]]],              lh: [[0, 6, [36, 43, 48]]] },
+  ],
+  phrases: [
+    { name: 'Intro — das Pendel setzt ein',    from: 0,  to: 4 },
+    { name: 'A — die Melodie steigt',          from: 5,  to: 8 },
+    { name: 'A — 3/8-Einwürfe & Lauf',         from: 9,  to: 13 },
+    { name: 'B — Hauptthema (a–h–e)',          from: 14, to: 21 },
+    { name: 'C — Oktave höher',                from: 22, to: 29 },
+    { name: 'Finale',                          from: 30, to: 34 },
+  ],
+};
+
+const SONGS = [FOGGY, CORNFIELD];
 
 // ---- Akkord-Lehrplan ----
 // voicing: 'full' | 'shell' | 'rootlessA' | 'rootlessB' — items können 'notes' (MIDI) direkt setzen

@@ -107,6 +107,7 @@ const App = (() => {
 
   const state = Object.assign(
     { mode: 'song', phrase: 0, hands: 'both', songTempo: 90, songLoop: true,
+      songId: 'foggy', phraseBy: {}, tempoBy: {},
       lesson: 0, item: 0, prog: '251', improTempo: null,
       improShow: { root: true, chord: true, scale: false }, improAnalyze: false,
       transpose: 0 },
@@ -120,6 +121,12 @@ const App = (() => {
   }
 
   // ---------- Song-Modus ----------
+  const curSong = () => SONGS.find(s => s.id === state.songId) || SONGS[0];
+  const barBeats = (song, bar) => bar.beats || song.beatsPerBar || 4;
+  // Alt-Zustand aus der Ein-Song-Zeit übernehmen
+  const songPhrase = song => state.phraseBy[song.id] ?? (song.id === 'foggy' ? (state.phrase || 0) : 0);
+  const songTempo = song => state.tempoBy[song.id] ?? (song.id === 'foggy' ? (state.songTempo || song.tempo) : song.tempo);
+
   // mel/lh-Einträge: [beat, dauer, midi] oder [beat, dauer, [midi, midi, ...]]
   function pushVoice(evs, beat, entries, cls, vel) {
     for (const [b, d, n] of entries) {
@@ -128,11 +135,11 @@ const App = (() => {
     }
   }
 
-  function songEvents(from, to, hands) {
+  function songEvents(song, from, to, hands) {
     const evs = [];
     let beat = 0;
     for (let i = from; i <= to; i++) {
-      const bar = FOGGY.bars[i];
+      const bar = song.bars[i];
       if (hands !== 'lh') pushVoice(evs, beat, bar.mel, 'rh', 0.85);
       if (hands !== 'rh') {
         if (bar.lh) pushVoice(evs, beat, bar.lh, 'lh', 0.5);
@@ -141,30 +148,42 @@ const App = (() => {
           v.forEach(n => evs.push({ t: beat + b, dur: d, midi: n, cls: 'lh', sound: 'piano', vel: 0.45 }));
         }
       }
-      beat += 4;
+      beat += barBeats(song, bar);
     }
     return { evs, beats: beat };
   }
 
-  function chordAtBeat(from, beat) {
-    const barIdx = from + Math.floor(beat / 4);
-    const bar = FOGGY.bars[barIdx];
-    if (!bar) return '';
-    const inBar = beat % 4;
-    let cur = bar.chords[0][0];
-    for (const [sym, b] of bar.chords) if (b <= inBar) cur = sym;
-    return cur;
+  function chordAtBeat(song, from, beat) {
+    let acc = 0;
+    for (let i = from; i < song.bars.length; i++) {
+      const bar = song.bars[i], len = barBeats(song, bar);
+      if (beat < acc + len) {
+        const inBar = beat - acc;
+        let cur = bar.chords[0][0];
+        for (const [sym, b] of bar.chords) if (b <= inBar) cur = sym;
+        return cur;
+      }
+      acc += len;
+    }
+    return '';
   }
 
   function renderSong() {
-    const ph = FOGGY.phrases[state.phrase];
+    const song = curSong();
+    const phrase = Math.min(songPhrase(song), song.phrases.length - 1);
+    const ph = song.phrases[phrase];
+    const tempo = songTempo(song);
+    const beatSym = (song.beatsPerBar || 4) === 4 ? '♩' : '♪';
+
     stage().innerHTML = `
+      <div class="chips">${SONGS.map(s =>
+        `<button class="chip${s.id === song.id ? ' on' : ''}" data-s="${s.id}">${s.title}</button>`).join('')}</div>
       <div class="phrase-nav">
         <button class="navbtn" id="phPrev">‹</button>
         <div class="phrase-title">
           <div class="phrase-name">${ph.name}</div>
-          <div class="dots">${FOGGY.phrases.map((_, i) =>
-            `<span class="dot${i === state.phrase ? ' on' : ''}" data-i="${i}"></span>`).join('')}</div>
+          <div class="dots">${song.phrases.map((_, i) =>
+            `<span class="dot${i === phrase ? ' on' : ''}" data-i="${i}"></span>`).join('')}</div>
         </div>
         <button class="navbtn" id="phNext">›</button>
       </div>
@@ -177,38 +196,42 @@ const App = (() => {
           <button class="segbtn${state.hands === 'lh' ? ' on' : ''}" data-h="lh">LH</button>
           <button class="segbtn${state.hands === 'both' ? ' on' : ''}" data-h="both">Beide</button>
         </div>
-        <label class="tempo">♩=<span id="songBpm">${state.songTempo}</span>
-          <input type="range" id="songTempo" min="50" max="180" value="${state.songTempo}">
+        <label class="tempo">${beatSym}=<span id="songBpm">${tempo}</span>
+          <input type="range" id="songTempo" min="50" max="220" value="${tempo}">
         </label>
       </div>`;
 
     const fitPhrase = () => {
-      const { evs } = songEvents(ph.from, ph.to, state.hands);
+      const { evs } = songEvents(song, ph.from, ph.to, state.hands);
       kbd.fitTo(evs.filter(e => e.midi).map(e => e.midi));
       kbd.clear();
     };
     fitPhrase();
 
+    stage().querySelectorAll('.chip[data-s]').forEach(c => c.onclick = () => {
+      player.stop();
+      state.songId = c.dataset.s; save(); renderSong();
+    });
+
     const setPhrase = i => {
       player.stop(); resetPlayBtn();
-      state.phrase = (i + FOGGY.phrases.length) % FOGGY.phrases.length;
+      state.phraseBy[song.id] = (i + song.phrases.length) % song.phrases.length;
       save(); renderSong();
     };
-    $('#phPrev').onclick = () => setPhrase(state.phrase - 1);
-    $('#phNext').onclick = () => setPhrase(state.phrase + 1);
+    $('#phPrev').onclick = () => setPhrase(phrase - 1);
+    $('#phNext').onclick = () => setPhrase(phrase + 1);
     stage().querySelectorAll('.dot').forEach(d => d.onclick = () => setPhrase(+d.dataset.i));
 
     const resetPlayBtn = () => { const b = $('#songPlay'); if (b) b.textContent = '▶'; };
     $('#songPlay').onclick = () => {
       if (player.playing) { player.stop(); resetPlayBtn(); $('#songChord').innerHTML = '&nbsp;'; return; }
-      const cur = FOGGY.phrases[state.phrase];
-      const { evs, beats } = songEvents(cur.from, cur.to, state.hands);
+      const { evs, beats } = songEvents(song, ph.from, ph.to, state.hands);
       $('#songPlay').textContent = '■';
       player.play(evs, {
-        tempo: state.songTempo,
+        tempo: songTempo(song),
         loopBeats: state.songLoop ? beats : null,
-        countIn: 4,
-        onBeat: b => { const el = $('#songChord'); if (el) el.textContent = fmtChord(chordAtBeat(cur.from, b)); },
+        countIn: song.beatsPerBar || 4,
+        onBeat: b => { const el = $('#songChord'); if (el) el.textContent = fmtChord(chordAtBeat(song, ph.from, b)); },
         onEnd: () => { resetPlayBtn(); },
       });
     };
@@ -218,8 +241,8 @@ const App = (() => {
       player.stop(); resetPlayBtn(); renderSong();
     });
     $('#songTempo').oninput = e => {
-      state.songTempo = +e.target.value; $('#songBpm').textContent = e.target.value; save();
-      player.setTempo(state.songTempo);
+      state.tempoBy[song.id] = +e.target.value; $('#songBpm').textContent = e.target.value; save();
+      player.setTempo(+e.target.value);
     };
   }
 

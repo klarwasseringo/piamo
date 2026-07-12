@@ -408,13 +408,16 @@ const App = (() => {
           const fifth = Theory.fit((ch.root + 7) % 12, b - 5, b + 6);
           evs.push({ t: t + 2, dur: 2, midi: fifth, sound: 'bass', vel: 0.65 });
         }
-        // Comping: Charleston (1 und „und“ von 2) — ohne Aufblitzen:
+        // Comping: Charleston (1 und geswingtes „und“ von 2) — ohne Aufblitzen:
         // der Griff wird von highlightChordScale die ganze Akkorddauer angezeigt
         const v = Theory.rootlessVoicing(ch, barIdx % 2 ? 'B' : 'A');
         v.forEach(n => evs.push({ t: t + seg.start, dur: 1.4, midi: n, sound: 'piano', vel: 0.32 }));
-        if (seg.dur === 4) v.forEach(n => evs.push({ t: t + 1.5, dur: 0.8, midi: n, sound: 'piano', vel: 0.22 }));
+        if (seg.dur === 4) v.forEach(n => evs.push({ t: t + 1.667, dur: 0.7, midi: n, sound: 'piano', vel: 0.22 }));
       }
+      // Swing-Ride: 1  2  2-und(geswingt)  3  4  4-und(geswingt), Akzent auf 2 und 4
       for (let i = 0; i < 4; i++) evs.push({ t: t + i, dur: 0.1, sound: 'tick', accent: i === 1 || i === 3 });
+      evs.push({ t: t + 1.667, dur: 0.1, sound: 'tick', accent: false });
+      evs.push({ t: t + 3.667, dur: 0.1, sound: 'tick', accent: false });
     });
     return { evs, beats: prog.bars.length * 4 };
   }
@@ -426,6 +429,12 @@ const App = (() => {
     if (bar.length === 2 || b < 3) return bar[1];
     return bar[2];
   }
+
+  // Swing: Offbeat-Achtel (x.5) auf die Triolenposition (~x.67) schieben
+  const swingBeat = b => {
+    const f = b - Math.floor(b);
+    return Math.abs(f - 0.5) < 0.01 ? b + 0.167 : b;
+  };
 
   // Ton relativ zum Akkord einordnen: Gerüst (Akkordton) / Verbindung (Skala) / Würze (chromatisch)
   const FUNC = { gerust: 'Gerüst', verb: 'Verbindung', wurze: 'Würze' };
@@ -542,47 +551,48 @@ const App = (() => {
     stage().querySelectorAll('.lick').forEach(b => b.onclick = () => {
       const lick = LICKS[+b.dataset.l];
       const analyze = state.improAnalyze;
-      const loopRunning = player.playing;
-      // Begleitung mitspielen, wenn analysiert ODER kein Loop läuft (sonst liefert der Loop die Akkorde)
-      const withBacking = analyze || !loopRunning;
-      if (analyze) { player.stop(); $('#imPlay').textContent = '▶'; kbd.clear(); }
+      // Loop immer pausieren: das Lick bringt seine eigene, harmonisch passende
+      // Begleitung mit (über fremden Loop-Akkorden würde es schräg klingen)
+      if (player.playing) { player.stop(); $('#imPlay').textContent = '▶'; }
+      if (analyze) kbd.clear();
       // In der Analyse langsamer, damit man jeden Ton erfassen kann
       const spb = 60 / (analyze ? 56 : (state.improTempo || prog.tempo));
       const t0 = Sound.now() + 0.1;
       const info = $('#lickInfo');
       if (info) info.textContent = analyze ? lick.name + ' · ' + lick.ctx : '';
 
-      // Die Akkorde des Licks als leise Begleitung mitspielen, damit man den Ton
-      // gegen seinen Akkord hört
-      if (withBacking) {
-        const lickEnd = lick.notes.at(-1)[0] + lick.notes.at(-1)[1];
-        lick.harmony.forEach(([beat, sym], i) => {
-          const end = i + 1 < lick.harmony.length ? lick.harmony[i + 1][0] : lickEnd;
-          const ch = Theory.parse(sym);
-          if (!ch) return;
-          const dur = (end - beat) * spb;
-          Sound.bass(Theory.bassNote(ch), t0 + beat * spb, dur, 0.7);
-          Theory.rootlessVoicing(ch, i % 2 ? 'B' : 'A')
-            .forEach(n => Sound.piano(n, t0 + beat * spb, dur * 0.92, 0.24));
-        });
-      }
+      // Die Akkorde des Licks als leise Begleitung mitspielen
+      const lickEnd = swingBeat(lick.notes.at(-1)[0] + lick.notes.at(-1)[1]);
+      lick.harmony.forEach(([beat, sym], i) => {
+        const end = i + 1 < lick.harmony.length ? lick.harmony[i + 1][0] : lickEnd;
+        const ch = Theory.parse(sym);
+        if (!ch) return;
+        const dur = (end - beat) * spb;
+        Sound.bass(Theory.bassNote(ch), t0 + beat * spb, dur, 0.7);
+        Theory.rootlessVoicing(ch, i % 2 ? 'B' : 'A')
+          .forEach(n => Sound.piano(n, t0 + beat * spb, dur * 0.92, 0.24));
+      });
+
+      // Melodie mit Swing (Offbeats auf Triolenposition) und leichten Offbeat-Akzenten
       for (const [t, d, n] of lick.notes) {
-        Sound.piano(n, t0 + t * spb, d * spb, 0.85);
-        const at = Math.max(0, (t0 - Sound.now() + t * spb) * 1000);
+        const s = swingBeat(t), dur = swingBeat(t + d) - s;
+        const off = Math.abs(t - Math.floor(t) - 0.5) < 0.01;
+        Sound.piano(n, t0 + s * spb, dur * spb, off ? 0.9 : 0.78);
+        const at = Math.max(0, (t0 - Sound.now() + s * spb) * 1000);
         if (analyze) {
           const ch = Theory.parse(lickChordAt(lick, t));
           const cls = classifyNote(n % 12, ch);
           setTimeout(() => {
-            kbd.flash(n, cls, Math.max(d * spb * 1000 - 40, 550));
+            kbd.flash(n, cls, Math.max(dur * spb * 1000 - 40, 550));
             if (info) info.innerHTML =
               `<b class="fn-${cls}">${Theory.noteName(n)} = ${Theory.intervalName(n % 12, ch)} von ${fmtChord(ch.symbol)}</b> · ${FUNC[cls]}`;
           }, at);
         } else {
-          setTimeout(() => kbd.flash(n, 'rh', Math.max(d * spb * 1000 - 40, 90)), at);
+          setTimeout(() => kbd.flash(n, 'rh', Math.max(dur * spb * 1000 - 40, 90)), at);
         }
       }
       if (analyze) {
-        const endMs = (t0 - Sound.now() + (lick.notes.at(-1)[0] + lick.notes.at(-1)[1]) * spb) * 1000;
+        const endMs = (t0 - Sound.now() + lickEnd * spb) * 1000;
         setTimeout(() => { if (info) info.textContent = lick.name + ' · ' + lick.ctx; }, endMs + 400);
       }
     });

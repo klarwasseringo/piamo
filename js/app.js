@@ -449,6 +449,34 @@ const App = (() => {
     return sym;
   }
 
+  // Akkordqualität grob klassifizieren (für „passt dieses Lick auf diesen Takt?“)
+  const QCLASS = t =>
+    (t === 'dom' || t === 'lyddom' || t === 'alt' || t === 'domdim') ? 'dom' :
+    (t === 'maj' || t === 'lyd') ? 'maj' :
+    (t === 'min' || t === 'melmin') ? 'min' : t;
+
+  // Lick-Melodie planen (Swing + Offbeat-Akzente); off = Transposition in Halbtönen
+  function scheduleLickNotes(lick, off, t0, spb, analyze, info) {
+    for (const [t, d, n0] of lick.notes) {
+      const n = n0 + off;
+      const s = swingBeat(t), dur = swingBeat(t + d) - s;
+      const offbeat = Math.abs(t - Math.floor(t) - 0.5) < 0.01;
+      Sound.piano(n, t0 + s * spb, dur * spb, offbeat ? 0.9 : 0.78);
+      const at = Math.max(0, (t0 - Sound.now() + s * spb) * 1000);
+      if (analyze) {
+        const ch = Theory.parse(lickChordAt(lick, t));
+        const cls = classifyNote(n0 % 12, ch);
+        setTimeout(() => {
+          kbd.flash(n, cls, Math.max(dur * spb * 1000 - 40, 550));
+          if (info) info.innerHTML =
+            `<b class="fn-${cls}">${Theory.noteName(n)} = ${Theory.intervalName(n0 % 12, ch)} von ${fmtChord(ch.symbol)}</b> · ${FUNC[cls]}`;
+        }, at);
+      } else {
+        setTimeout(() => kbd.flash(n, 'rh', Math.max(dur * spb * 1000 - 40, 90)), at);
+      }
+    }
+  }
+
   function highlightChordScale(sym, barIdx = 0) {
     const ch = Theory.parse(sym);
     kbd.clear();
@@ -551,14 +579,59 @@ const App = (() => {
     stage().querySelectorAll('.lick').forEach(b => b.onclick = () => {
       const lick = LICKS[+b.dataset.l];
       const analyze = state.improAnalyze;
-      // Loop immer pausieren: das Lick bringt seine eigene, harmonisch passende
-      // Begleitung mit (über fremden Loop-Akkorden würde es schräg klingen)
-      if (player.playing) { player.stop(); $('#imPlay').textContent = '▶'; }
-      if (analyze) kbd.clear();
+      const info = $('#lickInfo');
+
+      // Loop läuft (keine Analyse): Lick am nächsten harmonisch passenden Takt
+      // einfädeln und dorthin transponieren — der Loop spielt einfach weiter.
+      if (player.playing && !analyze) {
+        const totalBeats = prog.bars.length * 4;
+        const lickCh = Theory.parse(lick.harmony[0][1]);
+        const nowBeat = (Sound.now() - player.start) / player.spb;
+        const firstBar = Math.ceil((nowBeat + 1) / 4); // mind. 1 Schlag Vorlauf
+
+        // Alle Einstiegstakte des Loops bewerten: wie viele Akkorde des Licks
+        // passen dort (transponiert) zur Loop-Harmonie? Bester Score gewinnt,
+        // bei Gleichstand der früheste Einstieg.
+        let best = null;
+        for (let k = 0; k < prog.bars.length; k++) {
+          const barNo = firstBar + k;
+          const startSym = improChordAt(prog, (barNo * 4) % totalBeats);
+          const startCh = Theory.parse(startSym);
+          if (!startCh || QCLASS(startCh.scaleType) !== QCLASS(lickCh.scaleType)) continue;
+          let off = (startCh.root - lickCh.root) % 12;
+          if (off > 6) off -= 12;
+          if (off < -6) off += 12;
+          let score = 0;
+          for (const [hb, hsym] of lick.harmony) {
+            const lch = Theory.parse(hsym);
+            const pch = Theory.parse(improChordAt(prog, (barNo * 4 + hb) % totalBeats));
+            if (!lch || !pch || QCLASS(pch.scaleType) !== QCLASS(lch.scaleType)) continue;
+            score += pch.root === (lch.root + off + 12) % 12 ? 2 : 1;
+          }
+          if (!best || score > best.score) best = { barNo, off, score, sym: startSym };
+        }
+
+        if (best) {
+          scheduleLickNotes(lick, best.off, player.start + best.barNo * 4 * player.spb, player.spb, false, info);
+          if (info) {
+            const warten = Math.max(1, Math.round(best.barNo * 4 - nowBeat));
+            info.textContent = `${lick.name} · kommt in ${warten} Schlägen über ${fmtChord(best.sym)}`;
+            setTimeout(() => { if (info.textContent.startsWith(lick.name)) info.textContent = ''; },
+              (best.barNo * 4 - nowBeat + 8) * player.spb * 1000);
+          }
+          return;
+        }
+        // Kein passender Akkordtyp im Loop → Loop anhalten, Lick mit eigener Begleitung
+        player.stop(); $('#imPlay').textContent = '▶';
+      }
+
+      if (analyze) {
+        if (player.playing) { player.stop(); $('#imPlay').textContent = '▶'; }
+        kbd.clear();
+      }
       // In der Analyse langsamer, damit man jeden Ton erfassen kann
       const spb = 60 / (analyze ? 56 : (state.improTempo || prog.tempo));
       const t0 = Sound.now() + 0.1;
-      const info = $('#lickInfo');
       if (info) info.textContent = analyze ? lick.name + ' · ' + lick.ctx : '';
 
       // Die Akkorde des Licks als leise Begleitung mitspielen
@@ -573,24 +646,7 @@ const App = (() => {
           .forEach(n => Sound.piano(n, t0 + beat * spb, dur * 0.92, 0.24));
       });
 
-      // Melodie mit Swing (Offbeats auf Triolenposition) und leichten Offbeat-Akzenten
-      for (const [t, d, n] of lick.notes) {
-        const s = swingBeat(t), dur = swingBeat(t + d) - s;
-        const off = Math.abs(t - Math.floor(t) - 0.5) < 0.01;
-        Sound.piano(n, t0 + s * spb, dur * spb, off ? 0.9 : 0.78);
-        const at = Math.max(0, (t0 - Sound.now() + s * spb) * 1000);
-        if (analyze) {
-          const ch = Theory.parse(lickChordAt(lick, t));
-          const cls = classifyNote(n % 12, ch);
-          setTimeout(() => {
-            kbd.flash(n, cls, Math.max(dur * spb * 1000 - 40, 550));
-            if (info) info.innerHTML =
-              `<b class="fn-${cls}">${Theory.noteName(n)} = ${Theory.intervalName(n % 12, ch)} von ${fmtChord(ch.symbol)}</b> · ${FUNC[cls]}`;
-          }, at);
-        } else {
-          setTimeout(() => kbd.flash(n, 'rh', Math.max(dur * spb * 1000 - 40, 90)), at);
-        }
-      }
+      scheduleLickNotes(lick, 0, t0, spb, analyze, info);
       if (analyze) {
         const endMs = (t0 - Sound.now() + lickEnd * spb) * 1000;
         setTimeout(() => { if (info) info.textContent = lick.name + ' · ' + lick.ctx; }, endMs + 400);

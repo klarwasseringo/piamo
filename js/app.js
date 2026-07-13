@@ -121,7 +121,8 @@ const App = (() => {
   }
 
   // ---------- Song-Modus ----------
-  const curSong = () => SONGS.find(s => s.id === state.songId) || SONGS[0];
+  const allSongs = () => [...SONGS, ...SongImport.UserSongs.load()];
+  const curSong = () => allSongs().find(s => s.id === state.songId) || SONGS[0];
   const barBeats = (song, bar) => bar.beats || song.beatsPerBar || 4;
   // Alt-Zustand aus der Ein-Song-Zeit übernehmen
   const songPhrase = song => state.phraseBy[song.id] ?? (song.id === 'foggy' ? (state.phrase || 0) : 0);
@@ -158,6 +159,7 @@ const App = (() => {
     for (let i = from; i < song.bars.length; i++) {
       const bar = song.bars[i], len = barBeats(song, bar);
       if (beat < acc + len) {
+        if (!bar.chords.length) return '';
         const inBar = beat - acc;
         let cur = bar.chords[0][0];
         for (const [sym, b] of bar.chords) if (b <= inBar) cur = sym;
@@ -176,8 +178,9 @@ const App = (() => {
     const beatSym = (song.beatsPerBar || 4) === 4 ? '♩' : '♪';
 
     stage().innerHTML = `
-      <div class="chips">${SONGS.map(s =>
-        `<button class="chip${s.id === song.id ? ' on' : ''}" data-s="${s.id}">${s.title}</button>`).join('')}</div>
+      <div class="chips">${allSongs().map(s =>
+        `<button class="chip${s.id === song.id ? ' on' : ''}" data-s="${s.id}">${s.title}</button>`).join('')}
+        <button class="chip add" id="songImport" title="Song importieren">＋</button></div>
       <div class="phrase-nav">
         <button class="navbtn" id="phPrev">‹</button>
         <div class="phrase-title">
@@ -212,6 +215,7 @@ const App = (() => {
       player.stop();
       state.songId = c.dataset.s; save(); renderSong();
     });
+    $('#songImport').onclick = () => { player.stop(); renderImport(); };
 
     const setPhrase = i => {
       player.stop(); resetPlayBtn();
@@ -244,6 +248,91 @@ const App = (() => {
       state.tempoBy[song.id] = +e.target.value; $('#songBpm').textContent = e.target.value; save();
       player.setTempo(+e.target.value);
     };
+  }
+
+  // ---------- Song-Import ----------
+  function renderImport() {
+    const userSongs = SongImport.UserSongs.load();
+    const apiKey = localStorage.getItem('piamo.apiKey') || '';
+
+    stage().innerHTML = `
+      <div class="lesson-head">
+        <button class="navbtn sm" id="impBack">‹</button>
+        <div class="lesson-title">Song importieren</div>
+        <div style="width:34px"></div>
+      </div>
+      <div class="imp-card">
+        <div class="imp-title">📄 MusicXML — note-exakt (empfohlen)</div>
+        <div class="imp-hint">Noten mit <b>PlayScore 2</b> (iPhone) scannen oder in <b>MuseScore</b> öffnen und als
+          MusicXML exportieren. Dann hier laden (.musicxml, .xml oder .mxl).</div>
+        <label class="nextbtn filebtn">Datei wählen
+          <input type="file" id="impXml" accept=".xml,.musicxml,.mxl" hidden>
+        </label>
+      </div>
+      <div class="imp-card">
+        <div class="imp-title">📷 Foto → KI — Akkorde &amp; Gerüst</div>
+        <div class="imp-hint">Notenfotos an die Claude-API schicken. Akkorde, Form und Rhythmus werden zuverlässig
+          erkannt, einzelne Noten sind Näherung. Dein API-Key bleibt nur auf diesem Gerät.</div>
+        <input type="password" id="impKey" class="keyinput" placeholder="Claude API-Key (sk-ant-…)" value="${apiKey}">
+        <label class="nextbtn filebtn">Foto(s) wählen
+          <input type="file" id="impPhoto" accept="image/*" multiple hidden>
+        </label>
+      </div>
+      <div class="imp-status" id="impStatus"></div>
+      ${userSongs.length ? `
+      <div class="imp-card">
+        <div class="imp-title">Importierte Songs</div>
+        ${userSongs.map(s => `
+          <div class="imp-row"><span>${s.title}</span>
+            <button class="navbtn sm del" data-del="${s.id}">✕</button></div>`).join('')}
+      </div>` : ''}`;
+
+    kbd.setRange(48, 84); kbd.clear();
+    const status = msg => { const el = $('#impStatus'); if (el) el.textContent = msg; };
+    const finish = song => {
+      const saved = SongImport.UserSongs.add(song);
+      state.songId = saved.id;
+      state.phraseBy[saved.id] = 0;
+      save();
+      renderSong();
+    };
+
+    $('#impBack').onclick = () => renderSong();
+
+    $('#impXml').onchange = async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        status('Lese ' + file.name + ' …');
+        const song = await SongImport.fromFile(file);
+        status(`„${song.title}“: ${song.bars.length} Takte importiert ✓`);
+        setTimeout(() => finish(song), 600);
+      } catch (err) { status('⚠️ ' + err.message); }
+    };
+
+    $('#impPhoto').onchange = async e => {
+      const files = [...e.target.files];
+      if (!files.length) return;
+      const key = $('#impKey').value.trim();
+      if (!key) { status('⚠️ Bitte zuerst den API-Key eintragen.'); return; }
+      localStorage.setItem('piamo.apiKey', key);
+      try {
+        const song = await SongImport.fromPhotos(files, key, status);
+        status(`„${song.title}“: ${song.bars.length} Takte importiert ✓`);
+        setTimeout(() => finish(song), 600);
+      } catch (err) { status('⚠️ ' + err.message); }
+    };
+
+    stage().querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+      const id = b.dataset.del;
+      const s = userSongs.find(x => x.id === id);
+      if (confirm(`„${s.title}“ wirklich löschen?`)) {
+        SongImport.UserSongs.remove(id);
+        if (state.songId === id) state.songId = 'foggy';
+        save();
+        renderImport();
+      }
+    });
   }
 
   // ---------- Akkord-Modus ----------

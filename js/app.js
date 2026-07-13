@@ -613,7 +613,7 @@ const App = (() => {
       <div class="controls">
         <button class="playbtn" id="imPlay">▶</button>
         <label class="tempo">♩=<span id="imBpm">${tempo}</span>
-          <input type="range" id="imTempo" min="60" max="200" value="${tempo}">
+          <input type="range" id="imTempo" min="30" max="200" value="${tempo}">
         </label>
       </div>
       <div class="licks">${LICKS.map((l, i) =>

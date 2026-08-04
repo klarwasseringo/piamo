@@ -207,7 +207,64 @@ const CORNFIELD = {
   ],
 };
 
-const SONGS = [FOGGY, CORNFIELD];
+// ---- Für Elise (L. v. Beethoven, WoO 59) — Rondo-Hauptteil ----
+// a-Moll, 3/8 (1 Beat = 1 Achtel, 16tel = 0.5), beginnt mit Auftakt e–dis.
+const ELISE_THEME = { // der berühmte Themen-Takt: e–dis–e–h–d–c
+  chords: [], mel: [[0, .5, 76], [.5, .5, 75], [1, .5, 76], [1.5, .5, 71], [2, .5, 74], [2.5, .5, 72]], lh: [],
+};
+const ELISE_A = () => [
+  { ...ELISE_THEME },
+  { chords: [['Am', 0, 3]], mel: [[0, 1, 69], [1.5, .5, 60], [2, .5, 64], [2.5, .5, 69]],
+    lh: [[0, .5, 45], [.5, .5, 52], [1, .5, 57]] },
+  { chords: [['E7', 0, 3]], mel: [[0, 1, 71], [1.5, .5, 64], [2, .5, 68], [2.5, .5, 71]],
+    lh: [[0, .5, 40], [.5, .5, 52], [1, .5, 56]] },
+  { chords: [['Am', 0, 3]], mel: [[0, 1, 72], [1.5, .5, 64], [2, .5, 76], [2.5, .5, 75]],
+    lh: [[0, .5, 45], [.5, .5, 52], [1, .5, 57]] },
+  { ...ELISE_THEME },
+  { chords: [['Am', 0, 3]], mel: [[0, 1, 69], [1.5, .5, 60], [2, .5, 64], [2.5, .5, 69]],
+    lh: [[0, .5, 45], [.5, .5, 52], [1, .5, 57]] },
+  { chords: [['E7', 0, 3]], mel: [[0, 1, 71], [1.5, .5, 64], [2, .5, 72], [2.5, .5, 71]],
+    lh: [[0, .5, 40], [.5, .5, 52], [1, .5, 56]] },
+];
+
+const ELISE = {
+  id: 'elise',
+  title: 'Für Elise',
+  composer: 'L. v. Beethoven',
+  tempo: 104,            // 1 Beat = 1 Achtel; Original („Poco moto“) ~144
+  beatsPerBar: 3,
+  bars: [
+    // Auftakt: e–dis
+    { beats: 1, chords: [], mel: [[0, .5, 76], [.5, .5, 75]], lh: [] },
+    ...ELISE_A(),
+    // Kadenz-Takt mit Überleitung h–c–d in den Mittelteil
+    { chords: [['Am', 0, 3]], mel: [[0, 1, 69], [1.5, .5, 71], [2, .5, 72], [2.5, .5, 74]],
+      lh: [[0, .5, 45], [.5, .5, 52], [1, .5, 57]] },
+    // Mittelteil (C-Dur / G-Dur)
+    { chords: [['C', 0, 3]],  mel: [[0, 1, 76], [1.5, .5, 67], [2, .5, 77], [2.5, .5, 76]],
+      lh: [[0, .5, 48], [.5, .5, 55], [1, .5, 60]] },
+    { chords: [['G', 0, 3]],  mel: [[0, 1, 74], [1.5, .5, 65], [2, .5, 76], [2.5, .5, 74]],
+      lh: [[0, .5, 43], [.5, .5, 55], [1, .5, 59]] },
+    { chords: [['Am', 0, 3]], mel: [[0, 1, 72], [1.5, .5, 64], [2, .5, 74], [2.5, .5, 72]],
+      lh: [[0, .5, 45], [.5, .5, 52], [1, .5, 57]] },
+    { chords: [['E7', 0, 3]], mel: [[0, 1, 71], [1.5, .5, 64], [2, .5, 76], [2.5, .5, 75]],
+      lh: [[0, .5, 40], [.5, .5, 52], [1, .5, 56]] },
+    // Das Pendel e–dis führt zurück ins Thema
+    { chords: [['E7', 0, 3]], mel: [[0, .5, 76], [.5, .5, 75], [1, .5, 76], [1.5, .5, 75], [2, .5, 76], [2.5, .5, 75]], lh: [] },
+    // Reprise
+    ...ELISE_A(),
+    // Schluss auf a
+    { chords: [['Am', 0, 3]], mel: [[0, 3, 69]], lh: [[0, 3, [45, 52, 57]]] },
+  ],
+  phrases: [
+    { name: 'Das Thema (e–dis–e …)',   from: 0,  to: 4 },
+    { name: 'Antwort und Kadenz',      from: 5,  to: 8 },
+    { name: 'Mittelteil (C-Dur)',      from: 9,  to: 13 },
+    { name: 'Reprise',                 from: 14, to: 21 },
+  ],
+};
+
+const SONGS = [FOGGY, CORNFIELD, ELISE];
 
 // ---- Akkord-Lehrplan ----
 // voicing: 'full' | 'shell' | 'rootlessA' | 'rootlessB' — items können 'notes' (MIDI) direkt setzen
